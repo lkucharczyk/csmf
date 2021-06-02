@@ -1,0 +1,20 @@
+{
+	"name": "csmf",
+	"version": "0.1.0",
+	"main": "dist/index.js",
+	"author": "lkucharczyk",
+	"scripts": {
+		"preinstall": "npm run build",
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"dependencies": {
+		"fast-xml-parser": "^3.19.0",
+		"node-fetch": "^2.6.1"
+	},
+	"devDependencies": {
+		"@types/node-fetch": "^2.5.10",
+		"typescript": "^4.3.2"
+	}
+}
