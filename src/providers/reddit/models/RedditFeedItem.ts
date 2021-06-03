@@ -8,6 +8,13 @@ export interface RedditItem {
 		url : string;
 		permalink : string;
 		created_utc : number;
+		preview? : {
+			images? : {
+				source: {
+					url: string
+				}
+			}[]
+		}
 	};
 };
 
@@ -19,6 +26,7 @@ export class RedditFeedItem extends FeedItem<RedditFeedSourceData> {
 		out.url = 'https://reddit.com' + item.data.permalink;
 		out.timestamp = new Date( item.data.created_utc * 1000 );
 		out.content = item.data.selftext;
+		out.thumb = item.data.preview?.images?.map( e => e.source.url );
 
 		return out;
 	}
