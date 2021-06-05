@@ -14,8 +14,8 @@ interface RedditNewPosts {
 export class RedditFeedSource extends FeedSource<RedditFeedSourceData, string> {
 	public async fetchPool( next? : string ) : Promise<FeedItemPool<RedditFeedItem>> {
 		const raw = await fetch(
-			`https://www.reddit.com/r/${ encodeURIComponent( this.data.sub ) }/new.json`
-			+ ( next ? `?after=${ next }` : '' )
+			`https://www.reddit.com/r/${ encodeURIComponent( this.data.sub ) }/new.json?raw_json=1`
+			+ ( next ? `&after=${ next }` : '' )
 		).then<RedditNewPosts>( r => r.json() );
 
 		return {

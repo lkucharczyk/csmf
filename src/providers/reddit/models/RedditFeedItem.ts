@@ -13,8 +13,16 @@ export interface RedditItem {
 				source: {
 					url: string
 				}
-			}[]
-		}
+			}[];
+		};
+		media_metadata? : {
+			[ id : string ] : {
+				e : string;
+				s : {
+					u : string;
+				}
+			};
+		};
 	};
 };
 
@@ -25,8 +33,11 @@ export class RedditFeedItem extends FeedItem<RedditFeedSourceData> {
 		out.title = item.data.title;
 		out.url = 'https://reddit.com' + item.data.permalink;
 		out.timestamp = new Date( item.data.created_utc * 1000 );
-		out.content = item.data.selftext;
-		out.thumb = item.data.preview?.images?.map( e => e.source.url );
+		out.content = item.data.selftext.replace( /&#x200B;/g, '' );
+		out.thumb = [
+			...( item.data.preview?.images?.map( e => e.source.url ) ?? [] ),
+			...( Object.values( item.data.media_metadata ?? {} ).map( e => e.s.u ) ?? [] )
+		];
 
 		return out;
 	}

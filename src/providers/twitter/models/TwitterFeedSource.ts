@@ -16,6 +16,15 @@ interface TwitterUserByScreenNameWithoutResults {
 	}
 };
 
+interface TwitterTimelineCursor {
+	sortIndex : string;
+	content : {
+		entryType: 'TimelineTimelineCursor';
+		value: string;
+		cursorType: 'Top'|'Bottom';
+	};
+};
+
 interface TwitterTimeline {
 	data : {
 		user : {
@@ -23,7 +32,7 @@ interface TwitterTimeline {
 				timeline : {
 					timeline : {
 						instructions : [{
-							entries: TwitterTweet[]
+							entries: (TwitterTweet|TwitterTimelineCursor)[]
 						}]
 					}
 				}
@@ -32,53 +41,71 @@ interface TwitterTimeline {
 	}
 };
 
-export class TwitterFeedSource extends FeedSource<TwitterFeedSourceData, never> {
-	public async fetchPool() : Promise<FeedItemPool<TwitterFeedItem>> {
-		const tokens = await TwitterTokenSource.getInstance().getTokens();
+export class TwitterFeedSource extends FeedSource<TwitterFeedSourceData, string> {
+	protected async queryTwitterApi( query : string, data : Record<string, string|number|boolean> ) {
+		const tokenSource = TwitterTokenSource.getInstance();
 
-		const name : TwitterUserByScreenNameWithoutResults = await fetch( 'https://twitter.com/i/api/graphql/Vf8si2dfZ1zmah8ePYPjDQ/UserByScreenNameWithoutResults?' + new URLSearchParams( {
-			variables: JSON.stringify( {
+		return fetch( `https://twitter.com/i/api/graphql/${ await tokenSource.getQueryId( query ) }/${ query }?` + new URLSearchParams( {
+			variables: JSON.stringify( data )
+		} ).toString(), {
+			headers: {
+				authorization: 'Bearer ' + ( await tokenSource.getAuthorizationToken() ),
+				'x-guest-token': ( await tokenSource.getGuestToken() )
+			}
+		} );
+	}
+
+	protected userData? : TwitterUserByScreenNameWithoutResults;
+	public async fetchUserData() {
+		if ( !this.userData ) {
+			this.userData = await this.queryTwitterApi( 'UserByScreenNameWithoutResults', {
 				screen_name: this.data.user.toLowerCase(),
 				withHighlightedLabel: true
-			} )
-		} ).toString(), {
-			headers: {
-				authorization: 'Bearer ' + tokens.authToken,
-				'x-guest-token': tokens.guestToken
-			}
-		} ).then( r => r.json() );
+			} ).then<TwitterUserByScreenNameWithoutResults>( r => r.json() );
+		}
 
-		const timeline : TwitterTimeline = await fetch( `https://twitter.com/i/api/graphql/1DL8zlYnR-WKbi0BUG2rzQ/UserTweets?` + new URLSearchParams( {
-			variables: JSON.stringify( {
-				userId: name.data.user.rest_id,
-				count: 20,
-				withHighlightedLabel: true,
-				withTweetQuoteCount: true,
-				includePromotedContent: true,
-				withTweetResult: false,
-				withReactions: false,
-				withUserResults: false,
-				withVoice: false,
-				withNonLegacyCard: true,
-				withBirdwatchPivots: false
-			} ),
-		} ).toString(), {
-			headers: {
-				authorization: 'Bearer ' + tokens.authToken,
-				'x-guest-token': tokens.guestToken
-			}
-		} ).then( r => r.json() );
+		return this.userData;
+	}
+
+	public async fetchPool( next? : string ) : Promise<FeedItemPool<TwitterFeedItem>> {
+		const userData = await this.fetchUserData();
+
+		const timelineQuery : Record<string, string|number|boolean> = {
+			userId: userData.data.user.rest_id,
+			count: 25,
+			withHighlightedLabel: true,
+			withTweetQuoteCount: true,
+			includePromotedContent: true,
+			withTweetResult: false,
+			withReactions: false,
+			withSuperFollowsTweetFields: false,
+			withUserResults: false,
+			withVoice: false,
+			withNonLegacyCard: true,
+			withBirdwatchPivots: false
+		};
+
+		if ( next ) {
+			timelineQuery.cursor = next;
+		}
+
+		const timeline = await this.queryTwitterApi( 'UserTweets', timelineQuery )
+			.then<TwitterTimeline>( r => r.json() );
 
 		return {
 			items: TwitterFeedItem.fromTweets(
 				this.data,
-				name.data.user.legacy.screen_name,
-				timeline.data.user.result.timeline.timeline.instructions[0].entries.filter( e =>
-					e.content.entryType === 'TimelineTimelineItem'
+				userData.data.user.legacy.screen_name,
+				timeline.data.user.result.timeline.timeline.instructions[0].entries.filter(
+					( e ) : e is TwitterTweet => e.content.entryType === 'TimelineTimelineItem'
 				)
 			),
 			end: 0,
-			next: null
+			next: timeline.data.user.result.timeline.timeline.instructions[0].entries.find(
+				( e ) : e is TwitterTimelineCursor =>
+					e.content.entryType === 'TimelineTimelineCursor'
+					&& e.content.cursorType === 'Bottom'
+			)?.content.value
 		};
 	}
 };

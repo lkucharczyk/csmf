@@ -15,7 +15,6 @@ export abstract class FeedSource<T extends FeedSourceData, FetchNext = any> {
 	public async *fetch() : AsyncGenerator<FeedItem> {
 		let pool : FeedItemPool = await this.fetchPool();
 
-		console.log( this, pool.items.length );
 		while ( pool.items.length > 0 ) {
 			while ( pool.items.length > 0 ) {
 				yield pool.items.shift()!;
