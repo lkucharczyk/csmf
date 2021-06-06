@@ -1,4 +1,5 @@
 import { ProviderData } from '../../types/providerdata';
+import container from '../container';
 import { FeedSource } from '../models/FeedSource';
 import { RedditFeedSource } from '../providers/reddit';
 import { RSSFeedSource } from '../providers/rss';
@@ -17,9 +18,9 @@ export class FeedSourceFactory {
 
 	public getFeedSource( data : ProviderData ) : FeedSource<typeof data> {
 		switch ( data.provider ) {
-			case 'reddit': return new RedditFeedSource( data );
-			case 'rss': return new RSSFeedSource( data );
-			case 'twitter': return new TwitterFeedSource( data );
+			case 'reddit': return new RedditFeedSource( data, container.fetch );
+			case 'rss': return new RSSFeedSource( data, container.fetch );
+			case 'twitter': return new TwitterFeedSource( data, container.fetch );
 
 			// @ts-ignore
 			default: throw new Error( 'Unrecognized feed provider: ' + data.provider );

@@ -8,11 +8,17 @@ export interface RedditItem {
 		url : string;
 		permalink : string;
 		created_utc : number;
+		author : string;
 		preview? : {
 			images? : {
 				source: {
 					url: string
 				}
+			}[];
+		};
+		gallery_data? : {
+			items : {
+				media_id : string
 			}[];
 		};
 		media_metadata? : {
@@ -33,10 +39,14 @@ export class RedditFeedItem extends FeedItem<RedditFeedSourceData> {
 		out.title = item.data.title;
 		out.url = 'https://reddit.com' + item.data.permalink;
 		out.timestamp = new Date( item.data.created_utc * 1000 );
-		out.content = item.data.selftext.replace( /&#x200B;/g, '' );
+		out.content = item.data.selftext.replace( /&#x200B;/g, '' ).trim();
+		out.author = item.data.author;
 		out.thumb = [
 			...( item.data.preview?.images?.map( e => e.source.url ) ?? [] ),
-			...( Object.values( item.data.media_metadata ?? {} ).map( e => e.s.u ) ?? [] )
+			...(
+				( item.data.gallery_data?.items ?? [] )
+					.map( e => item.data.media_metadata![e.media_id].s.u )
+			)
 		];
 
 		return out;

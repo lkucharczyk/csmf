@@ -6,6 +6,7 @@ export class FeedItem<T extends FeedSourceData = ProviderData> {
 	public content? : string;
 	public timestamp? : Date;
 	public url? : string;
+	public author? : string;
 	public thumb? : string[];
 
 	public constructor( public readonly source : T ) {};

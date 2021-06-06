@@ -3,8 +3,6 @@ import { RSSFeedItem, RSSItem } from './RSSFeedItem';
 import { RSSFeedSourceData } from './RSSFeedSourceData';
 import XMLParser from 'fast-xml-parser';
 
-const fetch = window?.fetch ?? require( 'node-fetch' );
-
 interface RSS {
 	rss : {
 		channel : {
@@ -20,7 +18,7 @@ interface RSS {
 
 export class RSSFeedSource extends FeedSource<RSSFeedSourceData, never> {
 	public async fetchPool() : Promise<FeedItemPool<RSSFeedItem>> {
-		const raw = await fetch( this.data!.url! ).then( r => r.text() );
+		const raw = await this.request( this.data!.url! ).then( r => r.text() );
 		const rss : RSS = XMLParser.parse( raw );
 
 		return {

@@ -2,8 +2,6 @@ import { FeedItemPool, FeedSource } from '../../../models/FeedSource';
 import { RedditFeedItem, RedditItem } from './RedditFeedItem';
 import { RedditFeedSourceData } from './RedditFeedSourceData';
 
-const fetch = window?.fetch ?? require( 'node-fetch' );
-
 interface RedditNewPosts {
 	data : {
 		children : RedditItem[]
@@ -13,10 +11,10 @@ interface RedditNewPosts {
 
 export class RedditFeedSource extends FeedSource<RedditFeedSourceData, string> {
 	public async fetchPool( next? : string ) : Promise<FeedItemPool<RedditFeedItem>> {
-		const raw = await fetch(
+		const raw = await this.request(
 			`https://www.reddit.com/r/${ encodeURIComponent( this.data.sub ) }/new.json?raw_json=1`
 			+ ( next ? `&after=${ next }` : '' )
-		).then<RedditNewPosts>( r => r.json() );
+		).then( r => r.json<RedditNewPosts>() );
 
 		return {
 			items: RedditFeedItem.fromRedditItems( this.data, raw.data.children ),

@@ -1,4 +1,6 @@
-const fetch = window?.fetch ?? require( 'node-fetch' );
+import { FetchLike } from '../../../types/fetchlike';
+import container from '../../container';
+import { onlyone } from '../../util/onlyone';
 
 export class TwitterTokenSource {
 	public static readonly REGEXP_MAINJS = /<script type="text\/javascript" charset="utf-8" nonce="[^"]+" crossorigin="anonymous" src="(https:\/\/abs.twimg.com\/responsive-web\/client-web(?:-legacy)?\/main.\w+.js)">/;
@@ -11,23 +13,27 @@ export class TwitterTokenSource {
 
 	private static instance? : TwitterTokenSource;
 
+	protected constructor( protected request : FetchLike ) {
+	}
+
 	public static getInstance() {
 		if ( !TwitterTokenSource.instance ) {
-			TwitterTokenSource.instance = new TwitterTokenSource();
+			TwitterTokenSource.instance = new TwitterTokenSource( container.fetch );
 		}
 
 		return TwitterTokenSource.instance;
 	}
 
+	@onlyone
 	protected async fetchMainJSData() {
-		const html = await fetch( 'https://twitter.com' ).then( r => r.text() );
+		const html = await this.request( 'https://twitter.com' ).then( r => r.text() );
 		const jsurl = html.match( TwitterTokenSource.REGEXP_MAINJS );
 
 		if ( jsurl === null ) {
 			this.authToken = '';
 			this.queryIds = {};
 		} else {
-			const js = await fetch( jsurl[1] ).then( r => r.text() );
+			const js = await this.request( jsurl[1] ).then( r => r.text() );
 			this.authToken = js.match( TwitterTokenSource.REGEXP_AUTHTOKEN )?.[1] ?? '';
 			this.queryIds = Object.fromEntries( Array.from( js.matchAll( TwitterTokenSource.REGEXP_QUERYID ) ).map( m => [ m[2], m[1] ] ) );
 		}
@@ -38,17 +44,18 @@ export class TwitterTokenSource {
 		};
 	}
 
-	public async getAuthorizationToken( refresh : boolean = false ) : Promise<string> {
-		return refresh || !this.authToken
+	public async getAuthorizationToken() : Promise<string> {
+		return !this.authToken
 			? ( await this.fetchMainJSData() ).authToken
 			: this.authToken;
 	}
 
-	public async getGuestToken( refresh : boolean = false ) : Promise<string> {
-		if ( refresh || !this.guestToken ) {
+	@onlyone
+	public async getGuestToken() : Promise<string> {
+		if ( !this.guestToken ) {
 			const authToken = await this.getAuthorizationToken();
 
-			this.guestToken = ( await fetch( 'https://api.twitter.com/1.1/guest/activate.json', {
+			this.guestToken = ( await this.request( 'https://api.twitter.com/1.1/guest/activate.json', {
 				method: 'POST',
 				headers: {
 					Authorization: 'Bearer ' + authToken
@@ -59,19 +66,25 @@ export class TwitterTokenSource {
 		return this.guestToken;
 	}
 
-	public async getQueryId( queryName : string, refresh : boolean = false ) : Promise<string> {
+	public async getQueryId( queryName : string ) : Promise<string> {
 		let cache = this.queryIds;
-		if ( refresh || !cache ) {
+		if ( !cache ) {
 			cache = ( await this.fetchMainJSData() ).queryIds;
 		}
 
 		return cache[queryName] ?? '';
 	}
 
-	public async getTokens( refresh : boolean = false ) {
+	public async getTokens() {
 		return {
-			authToken: await this.getAuthorizationToken( refresh ),
-			guestToken: await this.getGuestToken( refresh )
+			authToken: await this.getAuthorizationToken(),
+			guestToken: await this.getGuestToken()
 		};
+	}
+
+	public invalidate() {
+		this.authToken = undefined;
+		this.guestToken = undefined;
+		this.queryIds = undefined;
 	}
 }

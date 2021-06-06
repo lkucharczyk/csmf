@@ -36,6 +36,7 @@ export class TwitterFeedItem extends FeedItem<TwitterFeedSourceData> {
 		out.url = `https://twitter.com/${ user }/status/${ item.sortIndex }`;
 		out.timestamp = new Date( data.created_at );
 		out.content = data.full_text;
+		out.author = user;
 		out.thumb = data.entities.media?.map( e => e.media_url_https );
 		if ( ( !out.thumb || out.thumb.length === 0 ) && data.retweeted_status ) {
 			out.thumb = data.retweeted_status.legacy.entities.media?.map( e => e.media_url_https );

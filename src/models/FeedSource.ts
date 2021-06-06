@@ -1,3 +1,4 @@
+import { FetchLike } from '../../types/fetchlike';
 import { FeedItem } from './FeedItem';
 import { FeedSourceData } from './FeedSourceData';
 
@@ -8,7 +9,7 @@ export interface FeedItemPool<Item extends FeedItem = FeedItem, Next = any> {
 };
 
 export abstract class FeedSource<T extends FeedSourceData, FetchNext = any> {
-	public constructor( public data : T ) {}
+	public constructor( public data : T, protected request : FetchLike ) {}
 
 	protected abstract fetchPool( next? : FetchNext ) : Promise<FeedItemPool>;
 

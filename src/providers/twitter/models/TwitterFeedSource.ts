@@ -1,9 +1,8 @@
+import { onlyonce } from '../../../util/onlyonce';
 import { FeedItemPool, FeedSource } from '../../../models/FeedSource';
 import { TwitterFeedItem, TwitterTweet } from './TwitterFeedItem';
 import { TwitterTokenSource } from '../TwitterTokenSource';
 import { TwitterFeedSourceData } from './TwitterFeedSourceData';
-
-const fetch = window?.fetch ?? require( 'node-fetch' );
 
 interface TwitterUserByScreenNameWithoutResults {
 	data : {
@@ -45,7 +44,7 @@ export class TwitterFeedSource extends FeedSource<TwitterFeedSourceData, string>
 	protected async queryTwitterApi( query : string, data : Record<string, string|number|boolean> ) {
 		const tokenSource = TwitterTokenSource.getInstance();
 
-		return fetch( `https://twitter.com/i/api/graphql/${ await tokenSource.getQueryId( query ) }/${ query }?` + new URLSearchParams( {
+		return this.request( `https://twitter.com/i/api/graphql/${ await tokenSource.getQueryId( query ) }/${ query }?` + new URLSearchParams( {
 			variables: JSON.stringify( data )
 		} ).toString(), {
 			headers: {
@@ -55,16 +54,12 @@ export class TwitterFeedSource extends FeedSource<TwitterFeedSourceData, string>
 		} );
 	}
 
-	protected userData? : TwitterUserByScreenNameWithoutResults;
+	@onlyonce
 	public async fetchUserData() {
-		if ( !this.userData ) {
-			this.userData = await this.queryTwitterApi( 'UserByScreenNameWithoutResults', {
-				screen_name: this.data.user.toLowerCase(),
-				withHighlightedLabel: true
-			} ).then<TwitterUserByScreenNameWithoutResults>( r => r.json() );
-		}
-
-		return this.userData;
+		return this.queryTwitterApi( 'UserByScreenNameWithoutResults', {
+			screen_name: this.data.user.toLowerCase(),
+			withHighlightedLabel: true
+		} ).then<TwitterUserByScreenNameWithoutResults>( r => r.json() );
 	}
 
 	public async fetchPool( next? : string ) : Promise<FeedItemPool<TwitterFeedItem>> {
